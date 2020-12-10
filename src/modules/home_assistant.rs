@@ -1,13 +1,14 @@
-use crate::config::{Config, HomeAssistantConfig};
-use crate::modules::Module;
-use crate::mqtt::MqttMessage;
 use futures_util::future::BoxFuture;
 use futures_util::FutureExt;
 use serde::Serialize;
 use tokio::sync::mpsc::UnboundedSender;
 
+use crate::config::{BacklightProvider, Config, HomeAssistantConfig};
+use crate::modules::Module;
+use crate::mqtt::MqttCommand;
+
 pub struct HomeAssistantModule {
-    mqtt_sender: UnboundedSender<MqttMessage>,
+    mqtt_sender: UnboundedSender<MqttCommand>,
 }
 
 impl Module for HomeAssistantModule {
@@ -18,8 +19,12 @@ impl Module for HomeAssistantModule {
             format!("desktop2mqtt_{}", hass_config.entity_id),
             hass_config.name.clone(),
         );
+        let backlight = config.backlight;
         async move {
-            self.announce_occupancy(&hass_config, topic, device)?;
+            self.announce_occupancy(&hass_config, topic.clone(), device.clone())?;
+            if backlight != BacklightProvider::None {
+                self.announce_backlight(&hass_config, topic, device)?;
+            }
 
             Ok(())
         }
@@ -28,8 +33,36 @@ impl Module for HomeAssistantModule {
 }
 
 impl HomeAssistantModule {
-    pub fn new(mqtt_sender: UnboundedSender<MqttMessage>) -> Self {
+    pub fn new(mqtt_sender: UnboundedSender<MqttCommand>) -> Self {
         HomeAssistantModule { mqtt_sender }
+    }
+
+    fn announce_backlight(
+        &self,
+        config: &HomeAssistantConfig,
+        topic: String,
+        device: Device,
+    ) -> anyhow::Result<()> {
+        let config_topic = format!("homeassistant/light/{}/backlight/config", config.entity_id);
+        let command_topic = format!("{}/set", topic);
+        let msg = ConfigMessage::light(
+            format!("{} Backlight", &config.name),
+            format!("{}_backlight_desktop2mqtt", config.entity_id),
+            device,
+            topic,
+            LightConfig {
+                command_topic: command_topic.clone(),
+                brightness: true,
+                schema: "json".to_string(),
+            },
+        );
+
+        self.mqtt_sender
+            .send(MqttCommand::subscribe(command_topic))?;
+        self.mqtt_sender
+            .send(MqttCommand::new_json(config_topic, &msg)?)?;
+
+        Ok(())
     }
 
     fn announce_occupancy(
@@ -42,20 +75,20 @@ impl HomeAssistantModule {
             "homeassistant/binary_sensor/{}/occupancy/config",
             config.entity_id
         );
-        let msg = ConfigMessage {
-            name: format!("{} Occupancy", &config.name),
-            unique_id: format!("{}_occupancy_desktop2mqtt", config.entity_id),
-            state_topic: topic.clone(),
-            device_class: "occupancy".to_string(),
-            payload_off: false,
-            payload_on: true,
-            json_attributes_topic: topic,
-            value_template: "{{ value_json.occupancy }}".to_string(),
+        let msg = ConfigMessage::sensor(
+            format!("{} Occupancy", &config.name),
+            format!("{}_occupancy_desktop2mqtt", config.entity_id),
             device,
-        };
+            topic,
+            SensorConfig {
+                device_class: "occupancy".to_string(),
+                value_template: "{{ value_json.occupancy }}".to_string(),
+                ..Default::default()
+            },
+        );
 
         self.mqtt_sender
-            .send(MqttMessage::new_json(config_topic, &msg)?)?;
+            .send(MqttCommand::new_json(config_topic, &msg)?)?;
 
         Ok(())
     }
@@ -66,12 +99,70 @@ pub struct ConfigMessage {
     pub name: String,
     pub unique_id: String,
     pub state_topic: String,
-    pub device_class: String,
     pub device: Device,
+    pub json_attributes_topic: String,
+    #[serde(flatten)]
+    pub sensor: Option<SensorConfig>,
+    #[serde(flatten)]
+    pub light: Option<LightConfig>,
+}
+
+impl ConfigMessage {
+    fn sensor(
+        name: String,
+        id: String,
+        device: Device,
+        topic: String,
+        config: SensorConfig,
+    ) -> Self {
+        ConfigMessage {
+            name,
+            unique_id: id,
+            device,
+            state_topic: topic.clone(),
+            json_attributes_topic: topic,
+            sensor: Some(config),
+            light: None,
+        }
+    }
+
+    fn light(name: String, id: String, device: Device, topic: String, config: LightConfig) -> Self {
+        ConfigMessage {
+            name,
+            unique_id: id,
+            device,
+            state_topic: topic.clone(),
+            json_attributes_topic: topic,
+            sensor: None,
+            light: Some(config),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct SensorConfig {
+    pub device_class: String,
+    pub value_template: String,
     pub payload_off: bool,
     pub payload_on: bool,
-    pub value_template: String,
-    pub json_attributes_topic: String,
+}
+
+impl Default for SensorConfig {
+    fn default() -> Self {
+        SensorConfig {
+            device_class: String::new(),
+            value_template: String::new(),
+            payload_on: true,
+            payload_off: false,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct LightConfig {
+    pub command_topic: String,
+    pub brightness: bool,
+    pub schema: String,
 }
 
 #[derive(Debug, Clone, Serialize)]

@@ -1,11 +1,15 @@
 use crate::config::Config;
 use futures_util::future::{BoxFuture, LocalBoxFuture};
 
+mod backlight;
+mod empty;
 mod home_assistant;
 mod idle;
 pub mod mqtt;
 pub mod state;
 
+pub use self::backlight::*;
+pub use self::empty::*;
 pub use self::home_assistant::*;
 pub use self::idle::*;
 pub use self::mqtt::*;
