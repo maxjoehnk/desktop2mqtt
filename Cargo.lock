@@ -982,8 +982,7 @@ dependencies = [
 [[package]]
 name = "xidlehook-core"
 version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c1e8b005055a0f472f31cbb66120d3a0e9127dc7830118445b8d48a1974b195d"
+source = "git+https://gitlab.com/maxjoehnk/xidlehook?branch=fix-arm-build#bd672bb892fbcf9e3a2a8b16393b75c34fd039ba"
 dependencies = [
  "log",
  "nix",
