@@ -30,6 +30,20 @@ jobs:
         with:
           name: Linux Client
           path: target/release/desktop2mqtt
+      - name: Install cargo-deb
+        uses: actions-rs/install@v0.1
+        with:
+          crate: cargo-deb
+          version: latest
+          use-tool-cache: true
+      - name: Build deb package
+        uses: actions-rs/cargo@v1
+        with:
+          command: deb
+      - uses: actions/upload-artifact@v2
+        with:
+          name: Debian Package
+          path: target/debian/*
       - name: Annotate commit with clippy warnings
         uses: actions-rs/clippy-check@v1
         with:
