@@ -1,11 +1,12 @@
 use crate::modules::Backlight;
 use futures_util::future::BoxFuture;
 use futures_util::FutureExt;
-use tokio::fs::File;
+use tokio::fs::{File, OpenOptions};
 use tokio::prelude::*;
 
 const BACKLIGHT_PATH: &str = "/sys/class/backlight/rpi_backlight";
 const POWER: &str = "bl_power";
+const BRIGHTNESS: &str = "brightness";
 const ACTUAL_BRIGHTNESS: &str = "actual_brightness";
 const MAX_BRIGHTNESS: &str = "max_brightness";
 
@@ -39,11 +40,11 @@ impl RaspberryPiBacklight {
     async fn read_power() -> anyhow::Result<bool> {
         let power = Self::read_value(POWER).await?;
 
-        Ok(power != 0)
+        Ok(power != 1)
     }
 
     async fn set_power(power: bool) -> anyhow::Result<()> {
-        let value = if power { 1 } else { 0 };
+        let value = if power { 0 } else { 1 };
 
         Self::set_value(POWER, value).await
     }
@@ -55,26 +56,32 @@ impl RaspberryPiBacklight {
     }
 
     async fn set_brightness(brightness: u32) -> anyhow::Result<()> {
-        Self::set_value(POWER, brightness as i32).await
+        Self::set_value(BRIGHTNESS, brightness as i32).await
     }
 
     async fn read_value(name: &str) -> anyhow::Result<i32> {
-        let mut file = Self::open_file(name).await?;
-        let value = file.read_i32().await?;
+        let mut file = Self::open_file(name, OpenOptions::new().read(true)).await?;
+        let mut content = String::new();
+        file.read_to_string(&mut content).await?;
+        log::trace!("Read {} from {}", &content, name);
+        let value = content.trim().parse()?;
 
         Ok(value)
     }
 
     async fn set_value(name: &str, value: i32) -> anyhow::Result<()> {
-        let mut file = Self::open_file(name).await?;
-        file.write_i32(value).await?;
+        let mut file = Self::open_file(name, OpenOptions::new().write(true)).await?;
+        let content = value.to_string();
+        log::trace!("Writing {} to {}", &content, name);
+        file.write(content.as_bytes()).await?;
 
         Ok(())
     }
 
-    async fn open_file(name: &str) -> anyhow::Result<File> {
+    async fn open_file(name: &str, options: &mut OpenOptions) -> anyhow::Result<File> {
         let file_path = format!("{}/{}", BACKLIGHT_PATH, name);
-        let file = File::open(&file_path).await?;
+        log::trace!("Opening file '{}'...", &file_path);
+        let file = options.open(&file_path).await?;
 
         Ok(file)
     }
