@@ -22,11 +22,13 @@ impl IdleModule {
 impl LocalModule for IdleModule {
     fn run(&mut self, config: &Config) -> LocalBoxFuture<anyhow::Result<()>> {
         let idle_timeout = config.idle_timeout;
+        let poll_rate = config.idle_poll_rate;
         async move {
             self.sender.send(StateChange::Idle(false))?;
             let timer = OccupancyTimer {
                 sender: self.sender.clone(),
                 time: Duration::from_secs(idle_timeout),
+                urgency: Duration::from_secs(poll_rate)
             };
             let mut idle_hook = Xidlehook::new(vec![timer]);
             let xcb = Xcb::new().unwrap();
@@ -41,6 +43,7 @@ impl LocalModule for IdleModule {
 pub struct OccupancyTimer {
     pub time: Duration,
     pub sender: UnboundedSender<StateChange>,
+    pub urgency: Duration,
 }
 
 impl Timer for OccupancyTimer {
@@ -52,7 +55,7 @@ impl Timer for OccupancyTimer {
     }
 
     fn abort_urgency(&self) -> Option<Duration> {
-        Some(Duration::from_secs(5))
+        Some(self.urgency)
     }
 
     fn activate(&mut self) -> xidlehook_core::Result<()> {
@@ -73,15 +76,18 @@ mod tests {
     use tokio::sync::mpsc;
 
     #[test]
-    fn abort_urgency_should_return_5_seconds() {
-        let timer = OccupancyTimer {
-            time: Default::default(),
-            sender: mpsc::unbounded_channel().0,
-        };
+    fn abort_urgency_should_return_urgency() {
+        for secs in vec![2, 5] {
+            let timer = OccupancyTimer {
+                time: Default::default(),
+                sender: mpsc::unbounded_channel().0,
+                urgency: Duration::from_secs(secs)
+            };
 
-        let urgency = timer.abort_urgency();
+            let urgency = timer.abort_urgency();
 
-        assert_eq!(Some(Duration::from_secs(5)), urgency);
+            assert_eq!(Some(Duration::from_secs(secs)), urgency);
+        }
     }
 
     #[test]
@@ -89,6 +95,7 @@ mod tests {
         let (sender, mut receiver) = mpsc::unbounded_channel();
         let mut timer = OccupancyTimer {
             time: Default::default(),
+            urgency: Default::default(),
             sender,
         };
 
@@ -102,6 +109,7 @@ mod tests {
         let (sender, mut receiver) = mpsc::unbounded_channel();
         let mut timer = OccupancyTimer {
             time: Default::default(),
+            urgency: Default::default(),
             sender,
         };
 
