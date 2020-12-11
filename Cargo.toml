@@ -1,8 +1,11 @@
 [package]
 name = "desktop2mqtt"
+description = "A daemon to integrate any pc into your home automation system."
 version = "0.1.0"
 authors = ["Max Jöhnk <maxjoehnk@gmail.com>"]
 edition = "2018"
+readme = "README.md"
+license = "MIT"
 
 [dependencies]
 log = "0.4"
@@ -15,3 +18,15 @@ serde_json = "1"
 serde_yaml = "0.8"
 anyhow = "1"
 futures-util = "0.3"
+
+[package.metadata.deb]
+section = "utility"
+priority = "optional"
+assets = [
+    ["target/release/desktop2mqtt", "usr/bin/", "755"],
+    ["README.md", "usr/share/doc/desktop2mqtt/README", "644"],
+]
+depends = "$auto"
+extended-description = """\
+A daemon to integrate any pc into your home automation system.\
+Primarily intended for [Home Assistant](https://home-assistant.io)."""
