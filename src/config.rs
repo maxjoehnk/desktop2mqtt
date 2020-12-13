@@ -1,5 +1,5 @@
 use crate::options::CliOptions;
-use directories::ProjectDirs;
+use directories_next::ProjectDirs;
 use serde::Deserialize;
 use std::fs::File;
 use std::path::{Path, PathBuf};
