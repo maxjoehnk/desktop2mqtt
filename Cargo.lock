@@ -1096,7 +1096,7 @@ dependencies = [
 [[package]]
 name = "xidlehook-core"
 version = "0.2.0"
-source = "git+https://gitlab.com/maxjoehnk/xidlehook?branch=fix-arm-build#bd672bb892fbcf9e3a2a8b16393b75c34fd039ba"
+source = "git+https://gitlab.com/jD91mZM2/xidlehook#07a6fe6ccb24e44854688237c66b101e1bcf2d68"
 dependencies = [
  "log",
  "nix",
