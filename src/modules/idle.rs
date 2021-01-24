@@ -1,6 +1,6 @@
 use crate::config::Config;
-use crate::modules::{StateChange, Module};
-use futures_util::future::{BoxFuture};
+use crate::modules::{Module, StateChange};
+use futures_util::future::BoxFuture;
 use futures_util::FutureExt;
 use std::time::Duration;
 use tokio::sync::mpsc::UnboundedSender;
@@ -25,10 +25,11 @@ impl Module for IdleModule {
 
             loop {
                 tokio::time::delay_for(Duration::from_secs(poll_rate)).await;
-                let idle = UserIdle::get_time().map_err(|err| anyhow::Error::msg(err.to_string()))?;
+                let idle =
+                    UserIdle::get_time().map_err(|err| anyhow::Error::msg(err.to_string()))?;
                 if idle.as_seconds() >= idle_timeout {
                     self.sender.send(StateChange::Idle(true))?;
-                }else {
+                } else {
                     self.sender.send(StateChange::Idle(false))?;
                 }
             }

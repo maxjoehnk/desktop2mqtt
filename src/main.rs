@@ -6,9 +6,9 @@ use crate::config::{get_config, Config};
 use crate::modules::*;
 use crate::options::CliOptions;
 use log::LevelFilter;
+use mqtt_async_client::client::{Client, Publish};
 use structopt::StructOpt;
 use tokio::sync::{broadcast, mpsc};
-use mqtt_async_client::client::{Publish, Client};
 
 fn main() -> anyhow::Result<()> {
     let options = CliOptions::from_args();
@@ -20,7 +20,9 @@ fn main() -> anyhow::Result<()> {
 
     let mut runtime = tokio::runtime::Runtime::new()?;
 
-    let mut client = Client::builder().set_host(config.mqtt.url.clone()).build()?;
+    let mut client = Client::builder()
+        .set_host(config.mqtt.url.clone())
+        .build()?;
 
     runtime.block_on(run(&mut client, config.clone()))?;
     log::info!("Stopping desktop2mqtt...");
@@ -34,7 +36,7 @@ fn main() -> anyhow::Result<()> {
 async fn go_offline(client: &Client, config: &Config) -> anyhow::Result<()> {
     let msg = MqttMessage {
         topic: format!("desktop2mqtt/{}/availability", config.hass.entity_id),
-        payload: "offline".to_string()
+        payload: "offline".to_string(),
     };
     let mut publish = Publish::from(msg);
     publish.set_retain(true);

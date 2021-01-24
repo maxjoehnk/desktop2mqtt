@@ -22,7 +22,11 @@ impl<'a> MqttModule<'a> {
         receiver: UnboundedReceiver<MqttCommand>,
         sender: broadcast::Sender<MqttMessage>,
     ) -> Self {
-        MqttModule { client, receiver, sender }
+        MqttModule {
+            client,
+            receiver,
+            sender,
+        }
     }
 }
 
@@ -32,9 +36,10 @@ impl<'a> Module for MqttModule<'a> {
         async move {
             self.publish(MqttMessage {
                 topic: format!("desktop2mqtt/{}/availability", entity_id),
-                payload: "online".to_string()
-            }).await?;
-            loop  {
+                payload: "online".to_string(),
+            })
+            .await?;
+            loop {
                 tokio::select! {
                     Some(msg) = self.receiver.recv() => {
                         match msg {
@@ -51,7 +56,7 @@ impl<'a> Module for MqttModule<'a> {
 
             Ok(())
         }
-            .boxed()
+        .boxed()
     }
 }
 
