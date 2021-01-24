@@ -10,37 +10,39 @@ use crate::modules::Module;
 use serde::de::DeserializeOwned;
 use std::convert::TryFrom;
 
-pub struct MqttModule {
+pub struct MqttModule<'a> {
+    client: &'a mut Client,
     receiver: UnboundedReceiver<MqttCommand>,
     sender: broadcast::Sender<MqttMessage>,
 }
 
-impl MqttModule {
+impl<'a> MqttModule<'a> {
     pub fn new(
+        client: &'a mut Client,
         receiver: UnboundedReceiver<MqttCommand>,
         sender: broadcast::Sender<MqttMessage>,
     ) -> Self {
-        MqttModule { receiver, sender }
+        MqttModule { client, receiver, sender }
     }
 }
 
-impl Module for MqttModule {
+impl<'a> Module for MqttModule<'a> {
     fn run(&mut self, config: &Config) -> BoxFuture<anyhow::Result<()>> {
-        let mqtt_config = config.mqtt.clone();
+        let entity_id = config.hass.entity_id.clone();
         async move {
-            let mut client = Client::builder().set_host(mqtt_config.url).build()?;
-
-            client.connect().await?;
-
+            self.publish(MqttMessage {
+                topic: format!("desktop2mqtt/{}/availability", entity_id),
+                payload: "online".to_string()
+            }).await?;
             loop  {
                 tokio::select! {
                     Some(msg) = self.receiver.recv() => {
                         match msg {
-                            MqttCommand::Subscribe(topic) => Self::subscribe(&mut client, topic).await?,
-                            MqttCommand::Emit(msg) => Self::publish(&client, msg).await?,
+                            MqttCommand::Subscribe(topic) => self.subscribe(topic).await?,
+                            MqttCommand::Emit(msg) => self.publish(msg).await?,
                         }
                     }
-                    msg = client.read_subscriptions() => {
+                    msg = self.client.read_subscriptions() => {
                         Self::recv(msg, &self.sender).await?;
                     },
                     else => break
@@ -53,24 +55,24 @@ impl Module for MqttModule {
     }
 }
 
-impl MqttModule {
-    async fn publish(client: &Client, msg: MqttMessage) -> anyhow::Result<()> {
+impl<'a> MqttModule<'a> {
+    async fn publish(&self, msg: MqttMessage) -> anyhow::Result<()> {
         log::debug!("Publishing mqtt message {:?}...", &msg);
         let mut publish = Publish::from(msg);
         publish.set_retain(true);
 
-        client.publish(&publish).await?;
+        self.client.publish(&publish).await?;
 
         Ok(())
     }
 
-    async fn subscribe(client: &mut Client, topic: String) -> anyhow::Result<()> {
+    async fn subscribe(&mut self, topic: String) -> anyhow::Result<()> {
         let topic = SubscribeTopic {
             topic_path: topic,
             qos: QoS::AtLeastOnce,
         };
         let subscription = Subscribe::new(vec![topic]);
-        client.subscribe(subscription).await?;
+        self.client.subscribe(subscription).await?;
 
         Ok(())
     }

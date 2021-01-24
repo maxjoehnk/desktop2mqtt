@@ -96,6 +96,7 @@ impl HomeAssistantModule {
 
 #[derive(Debug, Clone, Serialize)]
 pub struct ConfigMessage {
+    pub availability_topic: String,
     pub name: String,
     pub unique_id: String,
     pub state_topic: String,
@@ -116,6 +117,7 @@ impl ConfigMessage {
         config: SensorConfig,
     ) -> Self {
         ConfigMessage {
+            availability_topic: format!("{}/availability", topic),
             name,
             unique_id: id,
             device,
@@ -128,6 +130,7 @@ impl ConfigMessage {
 
     fn light(name: String, id: String, device: Device, topic: String, config: LightConfig) -> Self {
         ConfigMessage {
+            availability_topic: format!("{}/availability", topic),
             name,
             unique_id: id,
             device,
