@@ -33,8 +33,6 @@ impl Module for IdleModule {
                     self.sender.send(StateChange::Idle(false))?;
                 }
             }
-
-            Ok(())
         }
         .boxed()
     }
