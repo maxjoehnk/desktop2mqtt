@@ -20,8 +20,9 @@ impl Module for HomeAssistantModule {
             hass_config.name.clone(),
         );
         let backlight = config.backlight;
+        let expire_after = config.idle_poll_rate;
         async move {
-            self.announce_occupancy(&hass_config, topic.clone(), device.clone())?;
+            self.announce_occupancy(&hass_config, topic.clone(), device.clone(), expire_after)?;
             if backlight != BacklightProvider::None {
                 self.announce_backlight(&hass_config, topic, device)?;
             }
@@ -70,6 +71,7 @@ impl HomeAssistantModule {
         config: &HomeAssistantConfig,
         topic: String,
         device: Device,
+        expire_after: u64,
     ) -> anyhow::Result<()> {
         let config_topic = format!(
             "homeassistant/binary_sensor/{}/occupancy/config",
@@ -83,6 +85,7 @@ impl HomeAssistantModule {
             SensorConfig {
                 device_class: "occupancy".to_string(),
                 value_template: "{{ value_json.occupancy }}".to_string(),
+                expire_after: Some(expire_after),
                 ..Default::default()
             },
         );
@@ -148,6 +151,8 @@ pub struct SensorConfig {
     pub value_template: String,
     pub payload_off: bool,
     pub payload_on: bool,
+    /// Defines the number of seconds after the sensor’s state expires, if it’s not updated.
+    pub expire_after: Option<u64>,
 }
 
 impl Default for SensorConfig {
@@ -157,6 +162,7 @@ impl Default for SensorConfig {
             value_template: String::new(),
             payload_on: true,
             payload_off: false,
+            expire_after: None,
         }
     }
 }
