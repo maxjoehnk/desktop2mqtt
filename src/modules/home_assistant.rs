@@ -20,7 +20,7 @@ impl Module for HomeAssistantModule {
             hass_config.name.clone(),
         );
         let backlight = config.backlight;
-        let expire_after = config.idle_poll_rate;
+        let expire_after = config.idle_poll_rate * 2;
         async move {
             self.announce_occupancy(&hass_config, topic.clone(), device.clone(), expire_after)?;
             if backlight != BacklightProvider::None {
