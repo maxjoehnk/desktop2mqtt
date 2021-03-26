@@ -1,10 +1,12 @@
 use crate::config::{BacklightProvider, Config};
-use crate::modules::{EmptyModule, LocalModule, MqttMessage, PowerState, StateChange};
 use futures_util::future::{BoxFuture, LocalBoxFuture};
 use futures_util::FutureExt;
 use serde::Deserialize;
 use tokio::sync::broadcast;
 use tokio::sync::mpsc::UnboundedSender;
+use crate::core::state::{StateChange, PowerState};
+use crate::core::mqtt::MqttMessage;
+use crate::core::LocalWorker;
 
 mod raspberry_pi;
 mod stub;
@@ -29,7 +31,7 @@ impl<T: Backlight> BacklightModule<T> {
     }
 }
 
-impl<T: Backlight> LocalModule for BacklightModule<T> {
+impl<T: Backlight> LocalWorker for BacklightModule<T> {
     fn run(&mut self, config: &Config) -> LocalBoxFuture<anyhow::Result<()>> {
         let topic = format!("desktop2mqtt/{}/set", config.hass.entity_id);
         async move {
@@ -74,7 +76,7 @@ pub fn get_backlight_module(
     sender: UnboundedSender<StateChange>,
     receiver: broadcast::Receiver<MqttMessage>,
     config: BacklightProvider,
-) -> Box<dyn LocalModule> {
+) -> Box<dyn LocalWorker> {
     match config {
         BacklightProvider::RaspberryPi => to_module(
             self::raspberry_pi::RaspberryPiBacklight::new(),
@@ -82,7 +84,6 @@ pub fn get_backlight_module(
             receiver,
         ),
         BacklightProvider::Stub => to_module(self::stub::StubBacklight::new(), sender, receiver),
-        BacklightProvider::None => Box::new(EmptyModule),
     }
 }
 
@@ -90,7 +91,7 @@ fn to_module<TBacklight: Backlight + 'static>(
     backlight: TBacklight,
     sender: UnboundedSender<StateChange>,
     receiver: broadcast::Receiver<MqttMessage>,
-) -> Box<dyn LocalModule> {
+) -> Box<dyn LocalWorker> {
     let module = BacklightModule::new(backlight, sender, receiver);
 
     Box::new(module)

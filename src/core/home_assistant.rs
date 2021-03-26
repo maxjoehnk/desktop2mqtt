@@ -3,15 +3,15 @@ use futures_util::FutureExt;
 use serde::Serialize;
 use tokio::sync::mpsc::UnboundedSender;
 
-use crate::config::{BacklightProvider, Config, HomeAssistantConfig};
-use crate::modules::Module;
-use crate::mqtt::MqttCommand;
+use crate::core::mqtt::MqttCommand;
+use crate::core::worker::Worker;
+use crate::config::{Config, HomeAssistantConfig};
 
-pub struct HomeAssistantModule {
+pub struct HomeAssistantWorker {
     mqtt_sender: UnboundedSender<MqttCommand>,
 }
 
-impl Module for HomeAssistantModule {
+impl Worker for HomeAssistantWorker {
     fn run(&mut self, config: &Config) -> BoxFuture<anyhow::Result<()>> {
         let hass_config = config.hass.clone();
         let topic = format!("desktop2mqtt/{}", hass_config.entity_id);
@@ -19,11 +19,13 @@ impl Module for HomeAssistantModule {
             format!("desktop2mqtt_{}", hass_config.entity_id),
             hass_config.name.clone(),
         );
-        let backlight = config.backlight;
-        let expire_after = config.idle_poll_rate * 2;
+        let modules_config = config.modules;
         async move {
-            self.announce_occupancy(&hass_config, topic.clone(), device.clone(), expire_after)?;
-            if backlight != BacklightProvider::None {
+            if let Some(idle) = modules_config.idle {
+                let expire_after = idle.poll_rate * 2;
+                self.announce_occupancy(&hass_config, topic.clone(), device.clone(), expire_after)?;
+            }
+            if modules_config.backlight.is_some() {
                 self.announce_backlight(&hass_config, topic, device)?;
             }
 
@@ -33,9 +35,9 @@ impl Module for HomeAssistantModule {
     }
 }
 
-impl HomeAssistantModule {
+impl HomeAssistantWorker {
     pub fn new(mqtt_sender: UnboundedSender<MqttCommand>) -> Self {
-        HomeAssistantModule { mqtt_sender }
+        HomeAssistantWorker { mqtt_sender }
     }
 
     fn announce_backlight(

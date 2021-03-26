@@ -1,8 +1,10 @@
 mod config;
 mod modules;
 mod options;
+mod core;
 
 use crate::config::{get_config, Config};
+use crate::core::*;
 use crate::modules::*;
 use crate::options::CliOptions;
 use log::LevelFilter;
@@ -61,17 +63,20 @@ async fn run_loop(client: &mut Client, config: Config) -> anyhow::Result<()> {
     let (mqtt_event_sender, mqtt_event_receiver) = broadcast::channel(10);
     let (state_sender, state_receiver) = mpsc::unbounded_channel();
 
-    let mut mqtt_module = MqttModule::new(client, mqtt_receiver, mqtt_event_sender);
-    let mut hass_discovery_module = HomeAssistantModule::new(mqtt_sender.clone());
-    let mut state_module = StateModule::new(mqtt_sender.clone(), state_receiver);
+    let mut mqtt_worker = MqttWorker::new(client, mqtt_receiver, mqtt_event_sender);
+    let mut hass_discovery_worker = HomeAssistantWorker::new(mqtt_sender.clone());
+    let mut state = State::new(mqtt_sender.clone(), state_receiver);
     let mut idle_module = IdleModule::new(state_sender.clone());
-    let mut backlight_module =
-        get_backlight_module(state_sender, mqtt_event_receiver, config.backlight);
+    let mut backlight_module = if let Some(backlight) = config.modules.backlight {
+        get_backlight_module(state_sender, mqtt_event_receiver, backlight)
+    }else {
+        Box::new(EmptyWorker) as Box<dyn LocalWorker>
+    };
 
     tokio::try_join!(
-        mqtt_module.run(&config),
-        hass_discovery_module.run(&config),
-        state_module.run(&config),
+        mqtt_worker.run(&config),
+        hass_discovery_worker.run(&config),
+        state.run(&config),
         idle_module.run(&config),
         backlight_module.run(&config)
     )?;

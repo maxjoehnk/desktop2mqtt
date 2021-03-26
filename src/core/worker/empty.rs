@@ -1,17 +1,17 @@
 use crate::config::Config;
-use crate::modules::{LocalModule, Module};
+use super::{LocalWorker, Worker};
 use futures_util::future::{BoxFuture, LocalBoxFuture};
 use futures_util::FutureExt;
 
-pub struct EmptyModule;
+pub struct EmptyWorker;
 
-impl LocalModule for EmptyModule {
+impl LocalWorker for EmptyWorker {
     fn run(&mut self, _: &Config) -> LocalBoxFuture<anyhow::Result<()>> {
         async { Ok(()) }.boxed_local()
     }
 }
 
-impl Module for EmptyModule {
+impl Worker for EmptyWorker {
     fn run(&mut self, _: &Config) -> BoxFuture<anyhow::Result<()>> {
         async { Ok(()) }.boxed()
     }

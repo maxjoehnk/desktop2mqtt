@@ -5,24 +5,24 @@ use serde::Serialize;
 use tokio::sync::broadcast;
 use tokio::sync::mpsc::UnboundedReceiver;
 
-use crate::config::Config;
-use crate::modules::Module;
 use serde::de::DeserializeOwned;
 use std::convert::TryFrom;
+use crate::config::Config;
+use crate::core::Worker;
 
-pub struct MqttModule<'a> {
+pub struct MqttWorker<'a> {
     client: &'a mut Client,
     receiver: UnboundedReceiver<MqttCommand>,
     sender: broadcast::Sender<MqttMessage>,
 }
 
-impl<'a> MqttModule<'a> {
+impl<'a> MqttWorker<'a> {
     pub fn new(
         client: &'a mut Client,
         receiver: UnboundedReceiver<MqttCommand>,
         sender: broadcast::Sender<MqttMessage>,
     ) -> Self {
-        MqttModule {
+        MqttWorker {
             client,
             receiver,
             sender,
@@ -30,7 +30,7 @@ impl<'a> MqttModule<'a> {
     }
 }
 
-impl<'a> Module for MqttModule<'a> {
+impl<'a> Worker for MqttWorker<'a> {
     fn run(&mut self, config: &Config) -> BoxFuture<anyhow::Result<()>> {
         let entity_id = config.hass.entity_id.clone();
         async move {
@@ -60,7 +60,7 @@ impl<'a> Module for MqttModule<'a> {
     }
 }
 
-impl<'a> MqttModule<'a> {
+impl<'a> MqttWorker<'a> {
     async fn publish(&self, msg: MqttMessage) -> anyhow::Result<()> {
         log::debug!("Publishing mqtt message {:?}...", &msg);
         let mut publish = Publish::from(msg);

@@ -10,11 +10,23 @@ const DEFAULT_POLL_RATE: u64 = 5;
 pub struct Config {
     pub mqtt: MqttConfig,
     pub hass: HomeAssistantConfig,
-    pub idle_timeout: u64,
-    #[serde(default = "default_poll_rate")]
-    pub idle_poll_rate: u64,
     #[serde(default)]
-    pub backlight: BacklightProvider,
+    pub modules: Modules
+}
+
+#[derive(Default, Debug, Copy, Clone, Deserialize)]
+pub struct Modules {
+    #[serde(default)]
+    pub backlight: Option<BacklightProvider>,
+    #[serde(default)]
+    pub idle: Option<IdleModuleConfig>,
+}
+
+#[derive(Debug, Clone, Deserialize, Copy, PartialEq, Eq)]
+pub struct IdleModuleConfig {
+    pub timeout: u64,
+    #[serde(default = "default_poll_rate")]
+    pub poll_rate: u64,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -31,15 +43,8 @@ pub struct HomeAssistantConfig {
 #[derive(Debug, Copy, Clone, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "kebab-case")]
 pub enum BacklightProvider {
-    None,
     RaspberryPi,
     Stub,
-}
-
-impl Default for BacklightProvider {
-    fn default() -> Self {
-        BacklightProvider::None
-    }
 }
 
 fn default_poll_rate() -> u64 {

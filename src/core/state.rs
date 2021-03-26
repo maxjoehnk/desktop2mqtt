@@ -1,26 +1,26 @@
-use crate::config::Config;
-use crate::modules::Module;
-use crate::mqtt::MqttCommand;
 use futures_util::future::BoxFuture;
 use futures_util::FutureExt;
 use serde::{Deserialize, Serialize};
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
+use crate::core::mqtt::MqttCommand;
+use crate::config::Config;
+use crate::core::Worker;
 
-pub struct StateModule {
+pub struct State {
     sender: UnboundedSender<MqttCommand>,
     receiver: UnboundedReceiver<StateChange>,
 }
 
-impl StateModule {
+impl State {
     pub fn new(
         sender: UnboundedSender<MqttCommand>,
         receiver: UnboundedReceiver<StateChange>,
     ) -> Self {
-        StateModule { sender, receiver }
+        State { sender, receiver }
     }
 }
 
-impl Module for StateModule {
+impl Worker for State {
     fn run(&mut self, config: &Config) -> BoxFuture<anyhow::Result<()>> {
         let mut state = DesktopState::default();
         let topic = format!("desktop2mqtt/{}", config.hass.entity_id);
