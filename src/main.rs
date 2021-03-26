@@ -19,6 +19,7 @@ fn main() -> anyhow::Result<()> {
     let config = get_config(&options)?;
 
     log::info!("Starting desktop2mqtt...");
+    log::trace!("Config: {:?}", config);
 
     let mut runtime = tokio::runtime::Runtime::new()?;
 
@@ -60,25 +61,27 @@ async fn run(client: &mut Client, config: Config) -> anyhow::Result<()> {
 
 async fn run_loop(client: &mut Client, config: Config) -> anyhow::Result<()> {
     let (mqtt_sender, mqtt_receiver) = mpsc::unbounded_channel();
-    let (mqtt_event_sender, mqtt_event_receiver) = broadcast::channel(10);
+    let (mqtt_event_sender, _) = broadcast::channel(10);
     let (state_sender, state_receiver) = mpsc::unbounded_channel();
 
-    let mut mqtt_worker = MqttWorker::new(client, mqtt_receiver, mqtt_event_sender);
+    let mut mqtt_worker = MqttWorker::new(client, mqtt_receiver, mqtt_event_sender.clone());
     let mut hass_discovery_worker = HomeAssistantWorker::new(mqtt_sender.clone());
     let mut state = State::new(mqtt_sender.clone(), state_receiver);
     let mut idle_module = IdleModule::new(state_sender.clone());
     let mut backlight_module = if let Some(backlight) = config.modules.backlight {
-        get_backlight_module(state_sender, mqtt_event_receiver, backlight)
+        get_backlight_module(state_sender, mqtt_event_sender.subscribe(), backlight)
     }else {
         Box::new(EmptyWorker) as Box<dyn LocalWorker>
     };
+    let mut notifications_module = NotificationsModule::new(mqtt_event_sender.subscribe(), mqtt_sender);
 
     tokio::try_join!(
         mqtt_worker.run(&config),
         hass_discovery_worker.run(&config),
         state.run(&config),
         idle_module.run(&config),
-        backlight_module.run(&config)
+        backlight_module.run(&config),
+        notifications_module.run(&config),
     )?;
 
     Ok(())

@@ -72,6 +72,7 @@ impl<'a> MqttWorker<'a> {
     }
 
     async fn subscribe(&mut self, topic: String) -> anyhow::Result<()> {
+        log::debug!("Subscribing to mqtt topic {}...", &topic);
         let topic = SubscribeTopic {
             topic_path: topic,
             qos: QoS::AtLeastOnce,

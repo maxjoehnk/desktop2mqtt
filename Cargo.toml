@@ -20,6 +20,7 @@ anyhow = "1"
 futures-util = "0.3"
 structopt = "0.3"
 directories-next = "2"
+notify-rust = "4"
 
 [package.metadata.deb]
 section = "utility"

@@ -20,6 +20,9 @@ pub struct Modules {
     pub backlight: Option<BacklightProvider>,
     #[serde(default)]
     pub idle: Option<IdleModuleConfig>,
+    #[serde(default)]
+    // TODO: add configuration options for icon and app name
+    pub notifications: Option<bool>,
 }
 
 #[derive(Debug, Clone, Deserialize, Copy, PartialEq, Eq)]
