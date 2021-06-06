@@ -6,6 +6,7 @@ authors = ["Max Jöhnk <maxjoehnk@gmail.com>"]
 edition = "2018"
 readme = "README.md"
 license = "MIT"
+repository = "https://github.com/maxjoehnk/desktop2mqtt"
 
 [dependencies]
 log = "0.4"
