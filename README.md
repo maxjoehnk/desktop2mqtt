@@ -13,7 +13,21 @@ mqtt:
 hass:
   entity_id: desktop # will be used to build the different sensors
   name: Max Desktop # will be used for the friendly name of the sensors
-idle_timeout: 300 # time in seconds until this device is reported as unoccupied
-idle_poll_rate: 5 # time in seconds to poll for user input while the device is unoccupied (optional)
-backlight: none # backlight provider to use (one of: none, stub, raspberry-pi)
+modules:
+  idle:
+    timeout: 5min # duration until this device is reported as unoccupied
+    poll_rate: 5s # duration to poll for user input  while the device is unoccupied (optional)
+  backlight: none # backlight provider to use (one of: none, stub, raspberry-pi)
+  notifications: true # enables notification sending via /desktop2mqtt/entity_id/notify with `{ "title": "", "message": "" }` as payload
+  sensors:
+    poll_rate: 1s # sensor update rate
+    types: # sensors to report
+      - type: load
+      - type: memory
+      - type: core-temperature
+      - type: disk-usage
+        disks:
+          - /
+          - /mnt/games
+      - type: battery
 ```
