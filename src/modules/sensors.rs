@@ -43,7 +43,7 @@ impl Worker for SensorsModule {
                             self.sender.send(StateChange::Sensor { name, value: (value * 100.0).round() / 100.0  })?;
                         }
                     }
-                    tokio::time::delay_for(config.poll_rate).await;
+                    tokio::time::sleep(config.poll_rate).await;
                 }
             }.boxed()
         }

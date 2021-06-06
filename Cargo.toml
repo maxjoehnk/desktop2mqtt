@@ -10,9 +10,9 @@ license = "MIT"
 [dependencies]
 log = "0.4"
 env_logger = "0.8"
-tokio = { version = "0.2", features = ["full"] }
-mqtt-async-client = "0.1"
-user-idle = "0.3"
+tokio = { version = "1", features = ["fs", "rt-multi-thread", "sync", "signal", "time"] }
+mqtt-async-client = "0.2"
+user-idle = "0.4"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 serde_yaml = "0.8"
@@ -22,7 +22,7 @@ structopt = "0.3"
 directories-next = "2"
 notify-rust = "4"
 systemstat = "0.1"
-humantime-serde = "1.0.1"
+humantime-serde = "1"
 
 [package.metadata.deb]
 section = "utility"

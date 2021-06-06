@@ -2,7 +2,7 @@ use crate::modules::Backlight;
 use futures_util::future::BoxFuture;
 use futures_util::FutureExt;
 use tokio::fs::{File, OpenOptions};
-use tokio::prelude::*;
+use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
 const BACKLIGHT_PATH: &str = "/sys/class/backlight/rpi_backlight";
 const POWER: &str = "bl_power";

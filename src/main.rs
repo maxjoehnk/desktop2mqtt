@@ -21,7 +21,7 @@ fn main() -> anyhow::Result<()> {
     log::info!("Starting desktop2mqtt...");
     log::trace!("Config: {:?}", config);
 
-    let mut runtime = tokio::runtime::Runtime::new()?;
+    let runtime = tokio::runtime::Runtime::new()?;
 
     let mut client = Client::builder()
         .set_host(config.mqtt.url.clone())
