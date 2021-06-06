@@ -3,8 +3,9 @@ use directories_next::ProjectDirs;
 use serde::Deserialize;
 use std::fs::File;
 use std::path::{Path, PathBuf};
+use std::time::Duration;
 
-const DEFAULT_POLL_RATE: u64 = 5;
+const DEFAULT_POLL_RATE: Duration = Duration::from_secs(5);
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct Config {
@@ -14,7 +15,7 @@ pub struct Config {
     pub modules: Modules
 }
 
-#[derive(Default, Debug, Copy, Clone, Deserialize)]
+#[derive(Default, Debug, Clone, Deserialize)]
 pub struct Modules {
     #[serde(default)]
     pub backlight: Option<BacklightProvider>,
@@ -23,13 +24,41 @@ pub struct Modules {
     #[serde(default)]
     // TODO: add configuration options for icon and app name
     pub notifications: Option<bool>,
+    #[serde(default)]
+    pub sensors: SensorsConfig,
+}
+
+#[derive(Default, Debug, Clone, Deserialize, PartialEq, Eq)]
+pub struct SensorsConfig {
+    /// Sensor poll rate in seconds
+    #[serde(default = "sensor_poll_rate", with = "humantime_serde")]
+    pub poll_rate: Duration,
+    pub types: Vec<SensorType>,
+}
+
+#[derive(Debug, Clone, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "kebab-case", tag = "type")]
+pub enum SensorType {
+    Load,
+    Memory,
+    Battery,
+    CoreTemperature,
+    DiskUsage {
+        #[serde(default)]
+        disks: Vec<String>,
+    },
+}
+
+fn sensor_poll_rate() -> Duration {
+    Duration::from_secs(1)
 }
 
 #[derive(Debug, Clone, Deserialize, Copy, PartialEq, Eq)]
 pub struct IdleModuleConfig {
-    pub timeout: u64,
-    #[serde(default = "default_poll_rate")]
-    pub poll_rate: u64,
+    #[serde(with = "humantime_serde")]
+    pub timeout: Duration,
+    #[serde(default = "default_poll_rate", with = "humantime_serde")]
+    pub poll_rate: Duration,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -50,7 +79,7 @@ pub enum BacklightProvider {
     Stub,
 }
 
-fn default_poll_rate() -> u64 {
+fn default_poll_rate() -> Duration {
     DEFAULT_POLL_RATE
 }
 

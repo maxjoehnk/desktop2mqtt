@@ -21,6 +21,8 @@ futures-util = "0.3"
 structopt = "0.3"
 directories-next = "2"
 notify-rust = "4"
+systemstat = "0.1"
+humantime-serde = "1.0.1"
 
 [package.metadata.deb]
 section = "utility"

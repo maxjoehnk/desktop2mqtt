@@ -1,7 +1,6 @@
 use crate::config::Config;
 use futures_util::future::BoxFuture;
 use futures_util::FutureExt;
-use std::time::Duration;
 use tokio::sync::mpsc::UnboundedSender;
 use user_idle::UserIdle;
 use crate::core::state::StateChange;
@@ -24,10 +23,10 @@ impl Worker for IdleModule {
                 self.sender.send(StateChange::Idle(false))?;
 
                 loop {
-                    tokio::time::delay_for(Duration::from_secs(config.poll_rate)).await;
+                    tokio::time::delay_for(config.poll_rate).await;
                     let idle =
                         UserIdle::get_time().map_err(|err| anyhow::Error::msg(err.to_string()))?;
-                    if idle.as_seconds() >= config.timeout {
+                    if idle.as_seconds() >= config.timeout.as_secs() {
                         self.sender.send(StateChange::Idle(true))?;
                     } else {
                         self.sender.send(StateChange::Idle(false))?;

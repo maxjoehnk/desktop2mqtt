@@ -5,6 +5,7 @@ use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 use crate::core::mqtt::MqttCommand;
 use crate::config::Config;
 use crate::core::Worker;
+use std::collections::HashMap;
 
 pub struct State {
     sender: UnboundedSender<MqttCommand>,
@@ -37,6 +38,9 @@ impl Worker for State {
                         state.backlight_brightness = brightness;
                         state.backlight_power = power.into();
                     }
+                    StateChange::Sensor { name, value } => {
+                        state.sensors.insert(name, value);
+                    }
                 }
                 self.sender
                     .send(MqttCommand::new_json(topic.clone(), &state)?)?;
@@ -48,10 +52,11 @@ impl Worker for State {
     }
 }
 
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum StateChange {
     Idle(bool),
     Backlight { power: bool, brightness: u32 },
+    Sensor { name: String, value: f32 },
 }
 
 #[derive(Debug, Clone, Serialize, Default)]
@@ -61,6 +66,7 @@ pub struct DesktopState {
     pub backlight_power: PowerState,
     #[serde(rename = "brightness")]
     pub backlight_brightness: u32,
+    pub sensors: HashMap<String, f32>,
 }
 
 #[derive(Debug, Clone, Serialize)]

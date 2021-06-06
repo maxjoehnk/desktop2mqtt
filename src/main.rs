@@ -69,11 +69,12 @@ async fn run_loop(client: &mut Client, config: Config) -> anyhow::Result<()> {
     let mut state = State::new(mqtt_sender.clone(), state_receiver);
     let mut idle_module = IdleModule::new(state_sender.clone());
     let mut backlight_module = if let Some(backlight) = config.modules.backlight {
-        get_backlight_module(state_sender, mqtt_event_sender.subscribe(), backlight)
+        get_backlight_module(state_sender.clone(), mqtt_event_sender.subscribe(), backlight)
     }else {
         Box::new(EmptyWorker) as Box<dyn LocalWorker>
     };
     let mut notifications_module = NotificationsModule::new(mqtt_event_sender.subscribe(), mqtt_sender);
+    let mut sensors_module = SensorsModule::new(state_sender.clone());
 
     tokio::try_join!(
         mqtt_worker.run(&config),
@@ -82,6 +83,7 @@ async fn run_loop(client: &mut Client, config: Config) -> anyhow::Result<()> {
         idle_module.run(&config),
         backlight_module.run(&config),
         notifications_module.run(&config),
+        sensors_module.run(&config),
     )?;
 
     Ok(())
