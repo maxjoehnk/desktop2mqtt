@@ -25,6 +25,8 @@ fn main() -> anyhow::Result<()> {
 
     let mut client = Client::builder()
         .set_host(config.mqtt.url.clone())
+        .set_username(config.mqtt.username.clone())
+        .set_password(config.mqtt.password.clone().map(|s| s.as_bytes().to_vec()))
         .build()?;
 
     runtime.block_on(run(&mut client, config.clone()))?;

@@ -64,6 +64,8 @@ pub struct IdleModuleConfig {
 #[derive(Debug, Clone, Deserialize)]
 pub struct MqttConfig {
     pub url: String,
+    pub username: Option<String>,
+    pub password: Option<String>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
