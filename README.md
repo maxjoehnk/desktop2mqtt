@@ -32,4 +32,8 @@ modules:
           - /
           - /mnt/games
       - type: battery
+  custom_commands: # exposed as buttons to home assistant
+    - name: Disable HDMI
+      command: xrandr --output HDMI-0 --off
+      icon: mdi:television-off # optional
 ```

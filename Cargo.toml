@@ -11,7 +11,7 @@ repository = "https://github.com/maxjoehnk/desktop2mqtt"
 [dependencies]
 log = "0.4"
 env_logger = "0.8"
-tokio = { version = "1", features = ["fs", "rt-multi-thread", "sync", "signal", "time"] }
+tokio = { version = "1", features = ["fs", "rt-multi-thread", "sync", "signal", "time", "process"] }
 mqtt-async-client = "0.2"
 user-idle = "0.4"
 serde = { version = "1", features = ["derive"] }

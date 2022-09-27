@@ -3,10 +3,10 @@ use futures_util::FutureExt;
 use serde::Serialize;
 use tokio::sync::mpsc::UnboundedSender;
 
-use crate::config::{Config, HomeAssistantConfig, SensorType};
+use crate::config::{Config, CustomCommandConfig, HomeAssistantConfig, SensorType};
 use crate::core::mqtt::MqttCommand;
 use crate::core::worker::Worker;
-use crate::modules::{SensorsModule, SensorClass};
+use crate::modules::{ButtonClass, CustomCommandsModule, SensorClass, SensorsModule};
 
 pub struct HomeAssistantWorker {
     mqtt_sender: UnboundedSender<MqttCommand>,
@@ -24,13 +24,31 @@ impl Worker for HomeAssistantWorker {
         async move {
             if let Some(idle) = modules_config.idle {
                 let expire_after = idle.poll_rate * 2;
-                self.announce_occupancy(&hass_config, topic.clone(), device.clone(), expire_after.as_secs())?;
+                self.announce_occupancy(
+                    &hass_config,
+                    topic.clone(),
+                    device.clone(),
+                    expire_after.as_secs(),
+                )?;
             }
             if modules_config.backlight.is_some() {
                 self.announce_backlight(&hass_config, topic.clone(), device.clone())?;
             }
             if modules_config.sensors.types.len() > 0 {
-                self.announce_sensors(&hass_config, topic.clone(), device.clone(), &modules_config.sensors.types)?;
+                self.announce_sensors(
+                    &hass_config,
+                    topic.clone(),
+                    device.clone(),
+                    &modules_config.sensors.types,
+                )?;
+            }
+            if modules_config.custom_commands.len() > 0 {
+                self.announce_custom_commands(
+                    &hass_config,
+                    topic.clone(),
+                    device.clone(),
+                    &modules_config.custom_commands,
+                )?;
             }
 
             Ok(())
@@ -56,8 +74,9 @@ impl HomeAssistantWorker {
             format!("{} Backlight", &config.name),
             format!("{}_backlight_desktop2mqtt", config.entity_id),
             device,
-            topic,
+            topic.clone(),
             LightConfig {
+                state_topic: topic,
                 command_topic: command_topic.clone(),
                 brightness: true,
                 schema: "json".to_string(),
@@ -87,8 +106,9 @@ impl HomeAssistantWorker {
             format!("{} Occupancy", &config.name),
             format!("{}_occupancy_desktop2mqtt", config.entity_id),
             device,
-            topic,
+            topic.clone(),
             BinarySensorConfig {
+                state_topic: topic,
                 device_class: "occupancy".to_string().into(),
                 value_template: "{{ value_json.occupancy }}".to_string(),
                 expire_after: Some(expire_after),
@@ -107,25 +127,61 @@ impl HomeAssistantWorker {
         config: &HomeAssistantConfig,
         topic: String,
         device: Device,
-        enabled_sensors: &[SensorType]
+        enabled_sensors: &[SensorType],
     ) -> anyhow::Result<()> {
         for sensor in SensorsModule::get_sensors(enabled_sensors)? {
-            let config_topic = format!("homeassistant/sensor/{}/{}/config", config.entity_id, sensor.id);
+            let config_topic = format!(
+                "homeassistant/sensor/{}/{}/config",
+                config.entity_id, sensor.id
+            );
             let msg = ConfigMessage::sensor(
                 format!("{} {}", &config.name, sensor.name),
                 format!("{}_{}_desktop2mqtt", config.entity_id, sensor.id),
                 device.clone(),
                 topic.clone(),
                 SensorConfig {
+                    state_topic: topic.clone(),
                     device_class: sensor.class.to_hass_class(),
                     value_template: format!("{{{{ value_json.sensors.{} }}}}", sensor.id),
                     unit_of_measurement: sensor.class.to_unit(),
                     icon: sensor.icon,
                     ..Default::default()
-                }
+                },
             );
 
-            self.mqtt_sender.send(MqttCommand::new_json(config_topic, &msg)?)?;
+            self.mqtt_sender
+                .send(MqttCommand::new_json(config_topic, &msg)?)?;
+        }
+        Ok(())
+    }
+
+    fn announce_custom_commands(
+        &self,
+        config: &HomeAssistantConfig,
+        topic: String,
+        device: Device,
+        custom_commands: &[CustomCommandConfig],
+    ) -> anyhow::Result<()> {
+        for command in CustomCommandsModule::get_commands(&config.entity_id, custom_commands) {
+            let config_topic = format!(
+                "homeassistant/button/{}/{}/config",
+                config.entity_id, command.id
+            );
+            let msg = ConfigMessage::button(
+                format!("{} {}", &config.name, command.name),
+                format!("{}_{}_desktop2mqtt", config.entity_id, command.id),
+                device.clone(),
+                topic.clone(),
+                ButtonConfig {
+                    device_class: command.class.to_hass_class(),
+                    icon: command.icon,
+                    command_topic: command.topic,
+                    ..Default::default()
+                },
+            );
+
+            self.mqtt_sender
+                .send(MqttCommand::new_json(config_topic, &msg)?)?;
         }
         Ok(())
     }
@@ -155,12 +211,25 @@ impl ToHassClass for SensorClass {
     }
 }
 
+impl ToHassClass for ButtonClass {
+    fn to_hass_class(&self) -> Option<String> {
+        match self {
+            Self::Generic => None,
+            Self::Restart => Some("restart".to_string()),
+            Self::Update => Some("update".to_string()),
+        }
+    }
+
+    fn to_unit(&self) -> Option<String> {
+        None
+    }
+}
+
 #[derive(Debug, Clone, Serialize)]
 pub struct ConfigMessage {
     pub availability_topic: String,
     pub name: String,
     pub unique_id: String,
-    pub state_topic: String,
     pub device: Device,
     pub json_attributes_topic: String,
     #[serde(flatten)]
@@ -169,6 +238,8 @@ pub struct ConfigMessage {
     pub sensor: Option<SensorConfig>,
     #[serde(flatten)]
     pub light: Option<LightConfig>,
+    #[serde(flatten)]
+    pub button: Option<ButtonConfig>,
 }
 
 impl ConfigMessage {
@@ -184,11 +255,11 @@ impl ConfigMessage {
             name,
             unique_id: id,
             device,
-            state_topic: topic.clone(),
             json_attributes_topic: topic,
             binary_sensor: Some(config),
             sensor: None,
             light: None,
+            button: None,
         }
     }
 
@@ -204,11 +275,11 @@ impl ConfigMessage {
             name,
             unique_id: id,
             device,
-            state_topic: topic.clone(),
             json_attributes_topic: topic,
             binary_sensor: None,
             sensor: Some(config),
             light: None,
+            button: None,
         }
     }
 
@@ -218,17 +289,38 @@ impl ConfigMessage {
             name,
             unique_id: id,
             device,
-            state_topic: topic.clone(),
             json_attributes_topic: topic,
             binary_sensor: None,
             sensor: None,
             light: Some(config),
+            button: None,
+        }
+    }
+
+    fn button(
+        name: String,
+        id: String,
+        device: Device,
+        topic: String,
+        config: ButtonConfig,
+    ) -> Self {
+        ConfigMessage {
+            availability_topic: format!("{}/availability", topic),
+            name,
+            unique_id: id,
+            device,
+            json_attributes_topic: topic,
+            binary_sensor: None,
+            button: Some(config),
+            light: None,
+            sensor: None,
         }
     }
 }
 
 #[derive(Debug, Clone, Serialize)]
 pub struct BinarySensorConfig {
+    pub state_topic: String,
     pub device_class: Option<String>,
     pub value_template: String,
     pub payload_off: bool,
@@ -240,6 +332,7 @@ pub struct BinarySensorConfig {
 impl Default for BinarySensorConfig {
     fn default() -> Self {
         BinarySensorConfig {
+            state_topic: Default::default(),
             device_class: None,
             value_template: String::new(),
             payload_on: true,
@@ -251,6 +344,7 @@ impl Default for BinarySensorConfig {
 
 #[derive(Debug, Clone, Serialize)]
 pub struct SensorConfig {
+    pub state_topic: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub device_class: Option<String>,
     pub value_template: String,
@@ -260,12 +354,13 @@ pub struct SensorConfig {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub unit_of_measurement: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub icon: Option<String>
+    pub icon: Option<String>,
 }
 
 impl Default for SensorConfig {
     fn default() -> Self {
         SensorConfig {
+            state_topic: Default::default(),
             device_class: None,
             value_template: String::new(),
             expire_after: None,
@@ -277,9 +372,30 @@ impl Default for SensorConfig {
 
 #[derive(Debug, Clone, Serialize)]
 pub struct LightConfig {
+    pub state_topic: String,
     pub command_topic: String,
     pub brightness: bool,
     pub schema: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct ButtonConfig {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub device_class: Option<String>,
+    /// Defines the number of seconds after the sensor’s state expires, if it’s not updated.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub icon: Option<String>,
+    pub command_topic: String,
+}
+
+impl Default for ButtonConfig {
+    fn default() -> Self {
+        Self {
+            device_class: None,
+            icon: None,
+            command_topic: Default::default(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize)]

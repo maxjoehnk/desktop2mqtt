@@ -1,7 +1,8 @@
 mod config;
+mod core;
+mod extensions;
 mod modules;
 mod options;
-mod core;
 
 use crate::config::{get_config, Config};
 use crate::core::*;
@@ -71,12 +72,19 @@ async fn run_loop(client: &mut Client, config: Config) -> anyhow::Result<()> {
     let mut state = State::new(mqtt_sender.clone(), state_receiver);
     let mut idle_module = IdleModule::new(state_sender.clone());
     let mut backlight_module = if let Some(backlight) = config.modules.backlight {
-        get_backlight_module(state_sender.clone(), mqtt_event_sender.subscribe(), backlight)
-    }else {
+        get_backlight_module(
+            state_sender.clone(),
+            mqtt_event_sender.subscribe(),
+            backlight,
+        )
+    } else {
         Box::new(EmptyWorker) as Box<dyn LocalWorker>
     };
-    let mut notifications_module = NotificationsModule::new(mqtt_event_sender.subscribe(), mqtt_sender);
+    let mut notifications_module =
+        NotificationsModule::new(mqtt_event_sender.subscribe(), mqtt_sender.clone());
     let mut sensors_module = SensorsModule::new(state_sender.clone());
+    let mut custom_commands_module =
+        CustomCommandsModule::new(mqtt_event_sender.subscribe(), mqtt_sender);
 
     tokio::try_join!(
         mqtt_worker.run(&config),
@@ -86,6 +94,7 @@ async fn run_loop(client: &mut Client, config: Config) -> anyhow::Result<()> {
         backlight_module.run(&config),
         notifications_module.run(&config),
         sensors_module.run(&config),
+        custom_commands_module.run(&config),
     )?;
 
     Ok(())

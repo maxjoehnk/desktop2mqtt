@@ -12,7 +12,7 @@ pub struct Config {
     pub mqtt: MqttConfig,
     pub hass: HomeAssistantConfig,
     #[serde(default)]
-    pub modules: Modules
+    pub modules: Modules,
 }
 
 #[derive(Default, Debug, Clone, Deserialize)]
@@ -24,6 +24,8 @@ pub struct Modules {
     #[serde(default)]
     // TODO: add configuration options for icon and app name
     pub notifications: Option<bool>,
+    #[serde(default)]
+    pub custom_commands: Vec<CustomCommandConfig>,
     #[serde(default)]
     pub sensors: SensorsConfig,
 }
@@ -59,6 +61,21 @@ pub struct IdleModuleConfig {
     pub timeout: Duration,
     #[serde(default = "default_poll_rate", with = "humantime_serde")]
     pub poll_rate: Duration,
+}
+
+#[derive(Debug, Clone, Deserialize, PartialEq, Eq)]
+pub struct CustomCommandConfig {
+    pub name: String,
+    pub command: String,
+    pub icon: Option<String>,
+    pub button_type: Option<ButtonType>,
+}
+
+#[derive(Debug, Copy, Clone, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub enum ButtonType {
+    Restart,
+    Update,
 }
 
 #[derive(Debug, Clone, Deserialize)]
