@@ -1,7 +1,7 @@
 [package]
 name = "desktop2mqtt"
 description = "A daemon to integrate any pc into your home automation system."
-version = "0.2.0"
+version = "0.3.0"
 authors = ["Max Jöhnk <maxjoehnk@gmail.com>"]
 edition = "2018"
 readme = "README.md"

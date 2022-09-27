@@ -4,7 +4,14 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-# [HEAD](https://github.com/maxjoehnk/desktop2mqtt/compare/v0.2.0...HEAD) (2021-06-06)
+# [HEAD](https://github.com/maxjoehnk/desktop2mqtt/compare/v0.3.0...HEAD) (2022-09-27)
+
+# [v0.3.0](https://github.com/maxjoehnk/desktop2mqtt/compare/v0.2.0...v0.3.0) (2022-09-27)
+
+### Features
+
+- **mqtt**: add support for optional username and password auth (#3) ([85b0863](https://github.com/maxjoehnk/desktop2mqtt/commit/85b0863008f74bc03f8e45846c8ea41c2752a439))
+- **custom_commands**: add support for custom commands exposed as buttons to home assistant ([ef79125](https://github.com/maxjoehnk/desktop2mqtt/commit/ef79125de7480592c8dec0e7ab73eddac7c58a2f))
 
 # [v0.2.0](https://github.com/maxjoehnk/desktop2mqtt/compare/v0.1.0...v0.2.0) (2021-06-06)
 
