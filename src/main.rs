@@ -25,7 +25,7 @@ fn main() -> anyhow::Result<()> {
     let runtime = tokio::runtime::Runtime::new()?;
 
     let mut client = Client::builder()
-        .set_host(config.mqtt.url.clone())
+        .set_url_string(&config.mqtt.url)?
         .set_username(config.mqtt.username.clone())
         .set_password(config.mqtt.password.clone().map(|s| s.as_bytes().to_vec()))
         .build()?;

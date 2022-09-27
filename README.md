@@ -9,9 +9,9 @@ Place a `config.yml` file in your working directory with the following contents:
 
 ```yaml
 mqtt:
-  url: <your broker ip/domain>
-  username: <your broker username>
-  password: <your broker password>
+  url: mqtt://<your broker ip/domain>
+  username: <your broker username> # optional
+  password: <your broker password> # optional
 hass:
   entity_id: desktop # will be used to build the different sensors
   name: Max Desktop # will be used for the friendly name of the sensors

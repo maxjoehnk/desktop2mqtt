@@ -10,19 +10,19 @@ repository = "https://github.com/maxjoehnk/desktop2mqtt"
 
 [dependencies]
 log = "0.4"
-env_logger = "0.8"
+env_logger = "0.9.0"
 tokio = { version = "1", features = ["fs", "rt-multi-thread", "sync", "signal", "time", "process"] }
-mqtt-async-client = "0.2"
-user-idle = "0.4"
+mqtt-async-client = "0.3.1"
+user-idle = "0.5.2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-serde_yaml = "0.8"
+serde_yaml = "0.9"
 anyhow = "1"
 futures-util = "0.3"
 structopt = "0.3"
 directories-next = "2"
 notify-rust = "4"
-systemstat = "0.1"
+systemstat = "0.2"
 humantime-serde = "1"
 
 [package.metadata.deb]
