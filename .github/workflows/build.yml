@@ -26,7 +26,7 @@ jobs:
         with:
           command: build
           args: --release --all-features
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
           name: Linux Client
           path: target/release/desktop2mqtt
@@ -40,7 +40,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: deb
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
           name: Debian Package
           path: target/debian/*
@@ -65,7 +65,7 @@ jobs:
         with:
           command: build
           args: --release --all-features
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
           name: Windows Client
           path: target/release/desktop2mqtt.exe
@@ -90,7 +90,7 @@ jobs:
         with:
           command: build
           args: --release --all-features
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
           name: macOS Client
           path: target/release/desktop2mqtt
